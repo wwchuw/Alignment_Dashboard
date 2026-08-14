@@ -223,6 +223,7 @@ footer{border-top:1px solid var(--line);padding-top:14px;font-size:11.5px;color:
 <section>
   <div class="shead"><h2>แนวโน้มการเลื่อนศูนย์เพลา ปีต่อปี</h2></div>
   <p class="snote">เทียบค่าหลังปรับล่าสุดของรอบแรก (After) กับค่าก่อนปรับของรอบล่าสุด (Before) ของเครื่องที่มีบันทึกทั้งปี 2025 และ 2026 — วัดระยะที่เพลาเลื่อนไปจริงนับจากครั้งสุดท้ายที่ตั้งศูนย์ ไม่ปนกับสภาพก่อนซ่อมของรอบแรก เส้นชันขึ้นคือเลื่อนมาก เส้นประคือขอบ Limit (100%) คลิกเส้นเพื่อกรองตารางด้านล่าง</p>
+  <div class="frow" style="margin-bottom:10px"><span class="flabel">แกน</span><span id="f-slope-axis"></span></div>
   <div class="panel slopewrap"><svg class="slope" id="slope" viewBox="0 0 900 320" preserveAspectRatio="xMidYMid meet"></svg></div>
 </section>
 
@@ -273,7 +274,7 @@ const AX = ['V-Angular','V-Offset','H-Angular','H-Offset'];
 const CATN = {ftr:'ผ่านครั้งแรก', rework:'ปรับแก้ + วัดใหม่', noadj:'ปรับไม่ได้'};
 const PAGE_SIZE = 10;
 
-const state = {station:'ALL', year:'ALL', cat:'ALL', eq:null, axis:null, sort:null, dir:-1, search:'', page:1};
+const state = {station:'ALL', year:'ALL', cat:'ALL', eq:null, axis:null, slopeAxis:null, sort:null, dir:-1, search:'', page:1};
 let DATA = [];
 
 const $ = s => document.querySelector(s);
@@ -398,8 +399,28 @@ function stations(rows){
 }
 
 /* ---------- slope (YoY, always full dataset so both-year pairs exist) ---------- */
+function renderSlopeAxisChips(){
+  const box = $('#f-slope-axis'); box.innerHTML='';
+  const opts = [{v:null, label:'แย่ที่สุด (รวม 4 แกน)'}].concat(AX.map((name,i)=>({v:i, label:name})));
+  opts.forEach(o=>{
+    const b = el('button','chip', o.label);
+    b.type='button';
+    b.setAttribute('aria-pressed', state.slopeAxis===o.v);
+    b.onclick = ()=>{ state.slopeAxis = o.v; renderSlopeAxisChips(); slope(); };
+    box.appendChild(b);
+  });
+}
+
+function slopeAxisVal(r, side, i){
+  // side: 'b' = Before, 'a' = After · i = null คือใช้ค่าแย่ที่สุดจาก 4 แกน (เดิม)
+  if (i == null) return side === 'b' ? r.bu : r.au;
+  const lim = i%2 ? r.lo : r.la;
+  return Math.abs(r[side][i]) / (lim||1);
+}
+
 function slope(){
   const svg = $('#slope'); svg.innerHTML='';
+  const ax = state.slopeAxis;
   const byEq = {};
   DATA.forEach(r => (byEq[r.eq] = byEq[r.eq]||[]).push(r));
   const pairs = Object.entries(byEq)
@@ -430,17 +451,20 @@ function slope(){
   });
 
   const seen = {};
-  pairs.sort((p,q)=> (q.b.bu-q.a.au) - (p.b.bu-p.a.au)).forEach(p=>{
-    const d = p.b.bu - p.a.au;
+  const startOf = p => slopeAxisVal(p.a, 'a', ax);
+  const endOf   = p => slopeAxisVal(p.b, 'b', ax);
+  pairs.sort((p,q)=> (endOf(q)-startOf(q)) - (endOf(p)-startOf(p))).forEach(p=>{
+    const sv = startOf(p), ev = endOf(p);
+    const d = ev - sv;
     const col = Math.abs(d)<0.02 ? '#9aa5b3' : (d>0 ? 'var(--fail)' : 'var(--good)');
     const g = mk('g',{});
-    const ln = mk('line',{x1:L,y1:y(p.a.au),x2:R,y2:y(p.b.bu),class:'ln',stroke:col});
+    const ln = mk('line',{x1:L,y1:y(sv),x2:R,y2:y(ev),class:'ln',stroke:col});
     ln.onclick = ()=>{ state.eq = state.eq===p.eq?null:p.eq; state.station='ALL'; state.year='ALL'; state.cat='ALL'; state.page=1; render(); };
-    const ttl = mk('title',{}); ttl.textContent = p.eq+'  '+pct(p.a.au)+' → '+pct(p.b.bu);
+    const ttl = mk('title',{}); ttl.textContent = p.eq+'  '+pct(sv)+' → '+pct(ev);
     ln.appendChild(ttl); g.appendChild(ln);
-    g.appendChild(mk('circle',{cx:L,cy:y(p.a.au),class:'dt',fill:col}));
-    g.appendChild(mk('circle',{cx:R,cy:y(p.b.bu),class:'dt',fill:col}));
-    let ly = y(p.b.bu);
+    g.appendChild(mk('circle',{cx:L,cy:y(sv),class:'dt',fill:col}));
+    g.appendChild(mk('circle',{cx:R,cy:y(ev),class:'dt',fill:col}));
+    let ly = y(ev);
     while(seen[Math.round(ly/11)]) ly += 11;
     seen[Math.round(ly/11)] = 1;
     const lb = mk('text',{x:R+9,y:ly+3.5,fill:col});
@@ -576,6 +600,8 @@ function init(){
   $('#m-eq').textContent = eqs.size;
   $('#m-st').textContent = sts.size;
   $('#m-range').textContent = ds.length ? (ds[0] + ' – ' + ds[ds.length-1]) : '–';
+
+  renderSlopeAxisChips();
 
   document.querySelectorAll('#tbl th').forEach(th=>{
     th.onclick = ()=>{
