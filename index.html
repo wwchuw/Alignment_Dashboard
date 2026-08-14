@@ -277,7 +277,7 @@ let DATA = [];
 const $ = s => document.querySelector(s);
 const el = (t,c,h) => { const n=document.createElement(t); if(c)n.className=c; if(h!=null)n.innerHTML=h; return n; };
 const pct = v => (v*100).toFixed(0)+'%';
-const tone = u => u > 1.0001 ? 'fail' : (u >= 0.8 ? 'watch' : 'good');
+const tone = u => u > 1.0001 ? 'fail' : 'good';
 const yearOf = r => r.date.slice(0,4);
 
 /* ---------- load ---------- */
