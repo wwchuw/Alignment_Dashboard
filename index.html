@@ -145,7 +145,7 @@ tr.r:hover{background:var(--blue-lt)}
 .tag.ftr{color:var(--good);background:var(--good-lt)}
 .tag.rework{color:var(--watch);background:var(--watch-lt)}
 .tag.noadj{color:var(--fail);background:var(--fail-lt)}
-.copied{font-size:12px;color:var(--ink3)}
+.copiedtag{font-size:10px;font-weight:500;color:var(--ink3)}
 
 .pager{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;
   border-top:1px solid var(--line);font-size:12px;color:var(--ink3);flex-wrap:wrap;gap:8px}
@@ -219,8 +219,8 @@ footer{border-top:1px solid var(--line);padding-top:14px;font-size:11.5px;color:
 </section>
 
 <section>
-  <div class="shead"><h2>แนวโน้มการเสื่อมสภาพ ปีต่อปี</h2></div>
-  <p class="snote">เครื่องที่มีบันทึกทั้งปี 2025 และ 2026 เทียบค่า Before — เส้นชันขึ้นคือศูนย์เพลาเลื่อนมากขึ้น เส้นประคือขอบ Limit (100%) คลิกเส้นเพื่อกรองตารางด้านล่าง</p>
+  <div class="shead"><h2>แนวโน้มการเลื่อนศูนย์เพลา ปีต่อปี</h2></div>
+  <p class="snote">เทียบค่าหลังปรับล่าสุดของรอบแรก (After) กับค่าก่อนปรับของรอบล่าสุด (Before) ของเครื่องที่มีบันทึกทั้งปี 2025 และ 2026 — วัดระยะที่เพลาเลื่อนไปจริงนับจากครั้งสุดท้ายที่ตั้งศูนย์ ไม่ปนกับสภาพก่อนซ่อมของรอบแรก เส้นชันขึ้นคือเลื่อนมาก เส้นประคือขอบ Limit (100%) คลิกเส้นเพื่อกรองตารางด้านล่าง</p>
   <div class="panel slopewrap"><svg class="slope" id="slope" viewBox="0 0 900 320" preserveAspectRatio="xMidYMid meet"></svg></div>
 </section>
 
@@ -348,15 +348,17 @@ function filtered(){
 }
 
 /* ---------- tolerance bar ---------- */
-function bar(u, mini){
+function bar(u, opts){
+  opts = opts || {};
   const w = Math.min(u/2, 1)*100;
   const t = tone(u);
-  const b = el('div','tb'+(mini?' mini':''));
+  const b = el('div','tb'+(opts.mini?' mini':''));
   b.appendChild(el('div','fill c-'+t)).style.width = w.toFixed(1)+'%';
   b.appendChild(el('div','lim'));
   const row = el('div','tbrow');
   row.appendChild(b);
-  row.appendChild(el('div','tbval t-'+t, pct(u) + (u>2?' ▸':'')));
+  const suffix = opts.copied ? ' <span class="copiedtag">(คัดลอก)</span>' : (u>2?' ▸':'');
+  row.appendChild(el('div','tbval t-'+t, pct(u) + suffix));
   return row;
 }
 function rawVals(arr){
@@ -419,15 +421,15 @@ function slope(){
   });
 
   const seen = {};
-  pairs.sort((p,q)=> (q.b.bu-q.a.bu) - (p.b.bu-p.a.bu)).forEach(p=>{
-    const d = p.b.bu - p.a.bu;
+  pairs.sort((p,q)=> (q.b.bu-q.a.au) - (p.b.bu-p.a.au)).forEach(p=>{
+    const d = p.b.bu - p.a.au;
     const col = Math.abs(d)<0.02 ? '#9aa5b3' : (d>0 ? 'var(--fail)' : 'var(--good)');
     const g = mk('g',{});
-    const ln = mk('line',{x1:L,y1:y(p.a.bu),x2:R,y2:y(p.b.bu),class:'ln',stroke:col});
+    const ln = mk('line',{x1:L,y1:y(p.a.au),x2:R,y2:y(p.b.bu),class:'ln',stroke:col});
     ln.onclick = ()=>{ state.eq = state.eq===p.eq?null:p.eq; state.station='ALL'; state.year='ALL'; state.cat='ALL'; state.page=1; render(); };
-    const ttl = mk('title',{}); ttl.textContent = p.eq+'  '+pct(p.a.bu)+' → '+pct(p.b.bu);
+    const ttl = mk('title',{}); ttl.textContent = p.eq+'  '+pct(p.a.au)+' → '+pct(p.b.bu);
     ln.appendChild(ttl); g.appendChild(ln);
-    g.appendChild(mk('circle',{cx:L,cy:y(p.a.bu),class:'dt',fill:col}));
+    g.appendChild(mk('circle',{cx:L,cy:y(p.a.au),class:'dt',fill:col}));
     g.appendChild(mk('circle',{cx:R,cy:y(p.b.bu),class:'dt',fill:col}));
     let ly = y(p.b.bu);
     while(seen[Math.round(ly/11)]) ly += 11;
@@ -504,8 +506,7 @@ function table(rows){
     tr.appendChild(el('td')).appendChild(el('span','tag '+r.cat, CATN[r.cat]||r.cat));
     const b = el('td'); b.style.minWidth='170px'; b.appendChild(bar(r.bu)); b.appendChild(rawVals(r.b)); tr.appendChild(b);
     const a = el('td'); a.style.minWidth='170px';
-    if(r.copy) a.appendChild(el('span','copied','คัดลอกจาก Before'));
-    else a.appendChild(bar(r.au));
+    a.appendChild(bar(r.au, {copied: r.copy}));
     a.appendChild(rawVals(r.a));
     tr.appendChild(a);
     tb.appendChild(tr);
