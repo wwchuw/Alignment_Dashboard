@@ -121,6 +121,8 @@ svg.slope .dt{r:3.6}
 .tbval{font-size:11.5px;text-align:right;font-weight:600}
 .c-good{background:var(--good)} .c-watch{background:var(--watch)} .c-fail{background:var(--fail)}
 .t-good{color:var(--good)} .t-watch{color:var(--watch)} .t-fail{color:var(--fail)}
+.rawvals{font-size:10px;color:var(--ink3);margin-top:4px;white-space:nowrap;letter-spacing:.01em}
+.rawvals b{color:var(--ink2);font-weight:500}
 
 /* table */
 .tbar2{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px}
@@ -252,7 +254,8 @@ footer{border-top:1px solid var(--line);padding-top:14px;font-size:11.5px;color:
 
 <footer>
   ข้อมูลดึงจาก Google Sheets ผ่าน Apps Script API <br>
-  Utilization = ค่าสัมบูรณ์สูงสุดในสี่แกน หารด้วย Limit ของแกนนั้น · 100% = อยู่ที่ขอบ Limit พอดี
+  Utilization = ค่าสัมบูรณ์สูงสุดในสี่แกน หารด้วย Limit ของแกนนั้น · 100% = อยู่ที่ขอบ Limit พอดี<br>
+  VAn = Vertical Angular · VOf = Vertical Offset · HAn = Horizontal Angular · HOf = Horizontal Offset
 </footer>
 
 </div>
@@ -355,6 +358,11 @@ function bar(u, mini){
   row.appendChild(b);
   row.appendChild(el('div','tbval t-'+t, pct(u) + (u>2?' ▸':'')));
   return row;
+}
+function rawVals(arr){
+  const lbl = ['VAn','VOf','HAn','HOf'];
+  const txt = arr.map((v,i)=> `<b>${lbl[i]}</b> ${v.toFixed(2)}`).join('  ·  ');
+  return el('div','rawvals', txt);
 }
 
 /* ---------- stations ---------- */
@@ -494,10 +502,11 @@ function table(rows){
     tr.appendChild(el('td','', r.date));
     tr.appendChild(el('td','', `<div class="eqname">${r.eq}</div><div class="docid">${r.doc}</div>`));
     tr.appendChild(el('td')).appendChild(el('span','tag '+r.cat, CATN[r.cat]||r.cat));
-    const b = el('td'); b.style.minWidth='150px'; b.appendChild(bar(r.bu)); tr.appendChild(b);
-    const a = el('td'); a.style.minWidth='150px';
+    const b = el('td'); b.style.minWidth='170px'; b.appendChild(bar(r.bu)); b.appendChild(rawVals(r.b)); tr.appendChild(b);
+    const a = el('td'); a.style.minWidth='170px';
     if(r.copy) a.appendChild(el('span','copied','คัดลอกจาก Before'));
     else a.appendChild(bar(r.au));
+    a.appendChild(rawVals(r.a));
     tr.appendChild(a);
     tb.appendChild(tr);
   });
