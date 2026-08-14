@@ -310,9 +310,15 @@ function computeRow(r){
   const lim = i => (i % 2 === 0) ? r.la : r.lo;
   const util = arr => Math.max(...arr.map((v,i) => Math.abs(v) / (lim(i) || 1)));
   const bu = util(r.b), au = util(r.a);
-  const bPass = bu <= 1.0001;
-  const cat = r.copy && bPass ? 'ftr' : (r.copy && !bPass ? 'noadj' : (!r.copy && !bPass ? 'rework' : 'odd'));
-  return Object.assign({}, r, {bu: round3(bu), au: round3(au), bPass, cat});
+  const bPass = bu <= 1.0001, aPass = au <= 1.0001;
+  // "ปรับไม่ได้" = จบงานแล้วยังเกิน Limit อยู่ ไม่ว่าจะลงมือปรับ (copy=false) หรือไม่ปรับเลย (copy=true) ก็ตาม
+  // "ปรับแก้ + วัดใหม่" = ลงมือปรับแล้วสำเร็จ (After อยู่ในเกณฑ์)
+  let cat;
+  if (r.copy && bPass) cat = 'ftr';
+  else if (!r.copy && aPass) cat = 'rework';
+  else if (!aPass) cat = 'noadj';
+  else cat = 'odd';
+  return Object.assign({}, r, {bu: round3(bu), au: round3(au), bPass, aPass, cat});
 }
 function round3(v){ return Math.round(v*1000)/1000; }
 
